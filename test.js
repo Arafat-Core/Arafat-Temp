@@ -1,3 +1,4 @@
+const axios = require("axios");
 const Canvas = require("canvas");
 const { uploadZippyshare } = global.utils;
 
@@ -102,7 +103,7 @@ async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext,
 		name: allUser[rank - 1].name,
 		rank: `#${rank}/${allUser.length}`,
 		level: levelUser,
-		avatar: `https://graph.facebook.com/${userID}/picture?width=720&height=720&redirect=true&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`
+		avatar: `https://graph.facebook.com/${userID}/picture?type=large&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`
 	};
 
 	const configRankCard = {
@@ -698,7 +699,7 @@ class RankCard {
 			widthExp = 40.5 * percentage(widthCard),
 			heightExp = radius * 2;
 		ctx.globalCompositeOperation = "source-over";
-		centerImage(ctx, await Canvas.loadImage(avatar), xyAvatar, xyAvatar, resizeAvatar, resizeAvatar);
+		centerImage(ctx, await loadImageFromUrl(avatar), xyAvatar, xyAvatar, resizeAvatar, resizeAvatar);
 
 		// Vẽ thanh Exp
 		// Draw Exp bar
@@ -968,4 +969,24 @@ function checkFormatColor(color, enableUrl = true) {
 		!Array.isArray(color)
 	)
 		throw new Error(`The color format must be a hex, rgb, rgba ${enableUrl ? ", url image" : ""} or an array of colors`);
+}
+async function loadImageFromUrl(url) {
+	try {
+		const res = await axios.get(url, {
+			responseType: "arraybuffer",
+			maxRedirects: 5,
+			timeout: 15000,
+			headers: {
+				"User-Agent": "Mozilla/5.0",
+				"Accept": "image/*"
+			}
+		});
+		return await Canvas.loadImage(res.data);
+	}
+	catch (e) {
+		// fallback avatar (no error crash)
+		return await Canvas.loadImage(
+			"https://i.imgur.com/6VBx3io.png"
+		);
+	}
 }
