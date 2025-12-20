@@ -1,5 +1,4 @@
 const Canvas = require("canvas");
-const axios = require("axios");
 const { randomString } = global.utils;
 
 const percentage = total => total / 100;
@@ -23,8 +22,8 @@ global.client.makeRankCard = makeRankCard;
 module.exports = {
 	config: {
 		name: "rank",
-		version: "2.0",
-		author: "NTKhang (updated with custom API avatar)",
+		version: "2.3",
+		author: "NTKhang (final: clear pfp with public token)",
 		countDown: 5,
 		role: 0,
 		description: {
@@ -85,14 +84,6 @@ const defaultDesignCard = {
 	text_color: "#000000"
 };
 
-const API_JSON = "https://raw.githubusercontent.com/Arafat-Core/cmds/refs/heads/main/api.json";
-
-async function getBaseAPI() {
-	const res = await axios.get(API_JSON);
-	if (!res.data?.api) throw new Error("API base not found");
-	return res.data.api;
-}
-
 async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext) {
 	const { exp } = await usersData.get(userID);
 	const levelUser = expToLevel(exp, deltaNext);
@@ -106,17 +97,8 @@ async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext)
 
 	const customRankCard = (await threadsData.get(threadID, "data.customRankCard")) || {};
 
-	// Use your custom API to get high-quality profile picture
-	const baseApi = await getBaseAPI();
-	const apiUrl = `\( {baseApi}/pfp?uid= \){userID}`;
-	const apiRes = await axios.get(apiUrl);
-
-	if (!apiRes.data?.success || !apiRes.data?.pfp) {
-		// Fallback to default Facebook graph if API fails (optional)
-		throw new Error("Failed to get profile picture from API");
-	}
-
-	const avatar = apiRes.data.pfp; // Direct high-quality image URL from your API
+	// তোমার দেওয়া access token সহ clear high-quality profile picture
+	const avatar = `https://graph.facebook.com/${userID}/picture?width=720&height=720&access_token=6628568379|c1e620fa708a1dd0511730c4a5a88775`;
 
 	const dataLevel = {
 		exp: currentExp,
@@ -162,11 +144,37 @@ class RankCard {
 	}
 
 	setFontName(fontName) { this.fontName = fontName; return this; }
-	increaseTextSize(size) { if (isNaN(size) || size < 0) throw new Error("Size must be positive"); this.textSize = size; return this; }
-	decreaseTextSize(size) { if (isNaN(size) || size < 0) throw new Error("Size must be positive"); this.textSize = -size; return this; }
-	setWidthCard(w) { if (isNaN(w) || w < 0) throw new Error("Invalid width"); this.widthCard = Number(w); return this; }
-	setHeightCard(h) { if (isNaN(h) || h < 0) throw new Error("Invalid height"); this.heightCard = Number(h); return this; }
-	setAlphaSubCard(a) { if (isNaN(a) || a < 0 || a > 1) throw new Error("Alpha must be 0-1"); this.alpha_subcard = Number(a); return this; }
+
+	increaseTextSize(size) {
+		if (isNaN(size) || size < 0) throw new Error("Size must be positive");
+		this.textSize = size;
+		return this;
+	}
+
+	decreaseTextSize(size) {
+		if (isNaN(size) || size < 0) throw new Error("Size must be positive");
+		this.textSize = -size;
+		return this;
+	}
+
+	setWidthCard(w) {
+		if (isNaN(w) || w < 0) throw new Error("Invalid width");
+		this.widthCard = Number(w);
+		return this;
+	}
+
+	setHeightCard(h) {
+		if (isNaN(h) || h < 0) throw new Error("Invalid height");
+		this.heightCard = Number(h);
+		return this;
+	}
+
+	setAlphaSubCard(a) {
+		if (isNaN(a) || a < 0 || a > 1) throw new Error("Alpha must be 0-1");
+		this.alpha_subcard = Number(a);
+		return this;
+	}
+
 	setMainColor(c) { checkFormatColor(c); this.main_color = c; return this; }
 	setSubColor(c) { checkFormatColor(c); this.sub_color = c; return this; }
 	setExpColor(c) { checkFormatColor(c); this.exp_color = c; return this; }
@@ -177,6 +185,7 @@ class RankCard {
 	setExpTextColor(c) { checkFormatColor(c, false); this.exp_text_color = c; return this; }
 	setRankColor(c) { checkFormatColor(c, false); this.rank_color = c; return this; }
 	setLineColor(c) { this.line_color = c; return this; }
+
 	setExp(e) { this.exp = e; return this; }
 	setExpNextLevel(e) { this.expNextLevel = e; return this; }
 	setLevel(l) { this.level = l; return this; }
@@ -223,17 +232,21 @@ class RankCard {
 				ctx.save();
 				const img = await Canvas.loadImage(line_color);
 				ctx.globalCompositeOperation = "source-over";
+
 				ctx.beginPath();
 				ctx.arc(xyAvatar, xyAvatar, resizeAvatar / 2 + heightLineBetween, 0, 2 * Math.PI);
 				ctx.fill();
+
 				ctx.rect(xyAvatar + resizeAvatar / 2, heightCard / 2 - heightLineBetween / 2, widthLineBetween, heightLineBetween);
 				ctx.fill();
+
 				ctx.translate(xyAvatar + resizeAvatar / 2 + widthLineBetween + edge, 0);
 				ctx.rotate(angleLineCenter * Math.PI / 180);
 				ctx.rect(0, 0, heightLineBetween, 1000);
 				ctx.fill();
 				ctx.rotate(-angleLineCenter * Math.PI / 180);
 				ctx.translate(-(xyAvatar + resizeAvatar / 2 + widthLineBetween + edge), 0);
+
 				ctx.clip();
 				ctx.drawImage(img, 0, 0, widthCard, heightCard);
 				ctx.restore();
@@ -269,7 +282,7 @@ class RankCard {
 		ctx.globalCompositeOperation = "source-over";
 		centerImage(ctx, await Canvas.loadImage(avatar), xyAvatar, xyAvatar, resizeAvatar, resizeAvatar);
 
-		// Background EXP bar
+		// EXP bar background
 		if (!isUrl(expNextLevel_color)) {
 			ctx.fillStyle = checkGradientColor(ctx, expNextLevel_color, xStartExp, yStartExp, xStartExp + widthExp, yStartExp);
 			ctx.beginPath();
@@ -279,11 +292,10 @@ class RankCard {
 			ctx.arc(xStartExp + widthExp, yStartExp + radius, radius, Math.PI * 1.5, Math.PI * 0.5, false);
 			ctx.fill();
 		} else {
-			// Image background (rare)
-			const img = await Canvas.loadImage(expNextLevel_color);
 			ctx.save();
+			const img = await Canvas.loadImage(expNextLevel_color);
 			ctx.beginPath();
-			roundedRect(ctx, xStartExp, yStartExp, widthExp + radius * 2, heightExp, radius);
+			roundedRect(ctx, xStartExp - radius, yStartExp, widthExp + radius * 2, heightExp, radius);
 			ctx.clip();
 			ctx.drawImage(img, xStartExp - radius, yStartExp, widthExp + radius * 2, heightExp);
 			ctx.restore();
@@ -302,6 +314,14 @@ class RankCard {
 				ctx.arc(xStartExp + widthExpCurrent, yStartExp + radius, radius, Math.PI * 1.5, Math.PI * 0.5);
 				ctx.fill();
 			}
+		} else {
+			ctx.save();
+			const img = await Canvas.loadImage(exp_color);
+			ctx.beginPath();
+			roundedRect(ctx, xStartExp - radius, yStartExp, widthExpCurrent + radius * 2, heightExp, radius);
+			ctx.clip();
+			ctx.drawImage(img, xStartExp - radius, yStartExp, widthExpCurrent + radius * 2, heightExp);
+			ctx.restore();
 		}
 
 		// Texts
@@ -347,7 +367,7 @@ class RankCard {
 	}
 }
 
-// Helper functions
+// All Helper Functions (কোনো function remove করা হয়নি)
 async function checkColorOrImageAndDraw(x, y, w, h, ctx, color, r) {
 	if (!isUrl(color)) {
 		ctx.fillStyle = Array.isArray(color) ? checkGradientColor(ctx, color, x, y, x + w, y + h) : color;
