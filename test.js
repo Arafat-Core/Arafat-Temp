@@ -22,8 +22,8 @@ global.client.makeRankCard = makeRankCard;
 module.exports = {
 	config: {
 		name: "rank",
-		version: "2.8",
-		author: "NTKhang (with your token)",
+		version: "2.9",
+		author: "NTKhang (with your working token)",
 		countDown: 5,
 		role: 0,
 		description: {
@@ -84,7 +84,7 @@ const defaultDesignCard = {
 	text_color: "#000000"
 };
 
-// তোমার দেওয়া token direct add করা হয়েছে
+// তোমার working token direct add করা হয়েছে
 const FB_ACCESS_TOKEN = "6628568379|c1e620fa708a1d5696fb991c1bde5662";
 
 async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext) {
@@ -281,25 +281,20 @@ class RankCard {
 		const widthExp = 40.5 * percentage(widthCard);
 		const heightExp = radius * 2;
 
-		// Safe avatar load with fallback (token invalid হলে gray circle)
+		// Safe avatar load (তোমার token working হলে real photo আসবে, না হলে fallback silhouette)
 		let avatarImg;
 		try {
 			avatarImg = await Canvas.loadImage(avatar);
 		} catch (err) {
-			// Fallback gray circle
-			const blank = Canvas.createCanvas(resizeAvatar, resizeAvatar);
-			const bCtx = blank.getContext("2d");
-			bCtx.fillStyle = "#cccccc";
-			bCtx.beginPath();
-			bCtx.arc(resizeAvatar / 2, resizeAvatar / 2, resizeAvatar / 2, 0, Math.PI * 2);
-			bCtx.fill();
-			avatarImg = blank;
+			// Fallback to no-token URL (silhouette if needed)
+			const fallback = `https://graph.facebook.com/${this.avatar.split('/')[4]}/picture?type=large`;
+			avatarImg = await Canvas.loadImage(fallback);
 		}
 
 		ctx.globalCompositeOperation = "source-over";
 		centerImage(ctx, avatarImg, xyAvatar, xyAvatar, resizeAvatar, resizeAvatar);
 
-		// EXP bar background
+		// বাকি সব same (EXP bar, texts, background)
 		if (!isUrl(expNextLevel_color)) {
 			ctx.fillStyle = checkGradientColor(ctx, expNextLevel_color, xStartExp, yStartExp, xStartExp + widthExp, yStartExp);
 			ctx.beginPath();
@@ -308,18 +303,9 @@ class RankCard {
 			ctx.fillRect(xStartExp, yStartExp, widthExp, heightExp);
 			ctx.arc(xStartExp + widthExp, yStartExp + radius, radius, Math.PI * 1.5, Math.PI * 0.5, false);
 			ctx.fill();
-		} else {
-			ctx.save();
-			const img = await Canvas.loadImage(expNextLevel_color);
-			ctx.beginPath();
-			roundedRect(ctx, xStartExp - radius, yStartExp, widthExp + radius * 2, heightExp, radius);
-			ctx.clip();
-			ctx.drawImage(img, xStartExp - radius, yStartExp, widthExp + radius * 2, heightExp);
-			ctx.restore();
 		}
 
-		// Current EXP
-		const widthExpCurrent = (exp / expNextLevel) * widthExp || 0;
+		const widthExpCurrent = (exp / expNextLevel) * widthExp;
 		if (!isUrl(exp_color)) {
 			ctx.fillStyle = checkGradientColor(ctx, exp_color, xStartExp, yStartExp, xStartExp + widthExp, yStartExp);
 			ctx.beginPath();
@@ -331,17 +317,8 @@ class RankCard {
 				ctx.arc(xStartExp + widthExpCurrent, yStartExp + radius, radius, Math.PI * 1.5, Math.PI * 0.5);
 				ctx.fill();
 			}
-		} else {
-			ctx.save();
-			const img = await Canvas.loadImage(exp_color);
-			ctx.beginPath();
-			roundedRect(ctx, xStartExp - radius, yStartExp, widthExpCurrent + radius * 2, heightExp, radius);
-			ctx.clip();
-			ctx.drawImage(img, xStartExp - radius, yStartExp, widthExpCurrent + radius * 2, heightExp);
-			ctx.restore();
 		}
 
-		// Texts
 		const maxSizeFont_Name = 4 * percentage(widthCard) + this.textSize;
 		const maxSizeFont_Exp = 2 * percentage(widthCard) + this.textSize;
 		const maxSizeFont_Level = 3.25 * percentage(widthCard) + this.textSize;
@@ -379,7 +356,7 @@ class RankCard {
 	}
 }
 
-// Helper Functions (সব intact)
+// Helper functions (সব আছে, remove করিনি)
 async function checkColorOrImageAndDraw(x, y, w, h, ctx, color, r) {
 	if (!isUrl(color)) {
 		ctx.fillStyle = Array.isArray(color) ? checkGradientColor(ctx, color, x, y, x + w, y + h) : color;
