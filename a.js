@@ -18,6 +18,8 @@ const supportedDomains = [
   "pinterest.com", "pin.it"
 ];
 
+const API_BASE = "https://arafat.cyou";
+
 const startUI = `
 ╭───────────────❍
 │   🌐 𝑨𝑳𝑳 𝑴𝑬𝑫𝑰𝑨 𝑫𝑶𝑾𝑵𝑳𝑶𝑨𝑫𝑬𝑹
@@ -41,7 +43,7 @@ module.exports = {
   config: {
     name: "alldl",
     aliases: ["alldownload", "dl", "download"],
-    version: "5.1",
+    version: "5.0",
     author: "Arafat",
     role: 0,
     shortDescription: { en: "All-in-one media downloader" },
@@ -57,7 +59,6 @@ module.exports = {
   onChat: async function ({ sock, chatId, event, message }) {
     if (!message) return;
 
-    // 🔥 FIX: message.message থেকে আসল কনটেন্ট বের করুন
     const msgContent = message.message || message;
 
     let content = "";
@@ -74,8 +75,12 @@ module.exports = {
         react: { text: "⏳", key: event.key }
       });
 
+      const streamURL = content.includes("spotify.com")
+        ? `${API_BASE}/download/spotify?url=${encodeURIComponent(content)}`
+        : `${API_BASE}/download/arafatdl?url=${encodeURIComponent(content)}`;
+
       const extension =
-        content.includes("spotify") || content.includes("soundcloud") || content.includes(".mp3")
+        content.includes("spotify") || content.includes(".mp3")
           ? "mp3"
           : "mp4";
 
@@ -86,8 +91,6 @@ module.exports = {
       );
 
       await fs.ensureDir(path.dirname(filePath));
-
-      const streamURL = `https://arafat.cyou/download?url=${encodeURIComponent(content)}`;
 
       const stream = await axios({
         url: streamURL,
@@ -136,11 +139,12 @@ module.exports = {
 
         } catch (sendErr) {
           console.log("ALLDL SEND ERROR:", sendErr.message);
-          fs.unlinkSync(filePath);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         }
       });
 
-      writer.on("error", async () => {
+      writer.on("error", async (err) => {
+        console.log("ALLDL WRITE ERROR:", err.message);
         await sock.sendMessage(chatId, {
           react: { text: "❌", key: event.key }
         });
