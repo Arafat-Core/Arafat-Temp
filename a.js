@@ -41,7 +41,7 @@ module.exports = {
   config: {
     name: "alldl",
     aliases: ["alldownload", "dl", "download"],
-    version: "5.0",
+    version: "5.1",
     author: "Arafat",
     role: 0,
     shortDescription: { en: "All-in-one media downloader" },
@@ -57,11 +57,14 @@ module.exports = {
   onChat: async function ({ sock, chatId, event, message }) {
     if (!message) return;
 
+    // 🔥 FIX: message.message থেকে আসল কনটেন্ট বের করুন
+    const msgContent = message.message || message;
+
     let content = "";
-    if (message.conversation) content = message.conversation.trim();
-    else if (message.extendedTextMessage?.text) content = message.extendedTextMessage.text.trim();
-    else if (message.imageMessage?.caption) content = message.imageMessage.caption.trim();
-    else if (message.videoMessage?.caption) content = message.videoMessage.caption.trim();
+    if (msgContent.conversation) content = msgContent.conversation.trim();
+    else if (msgContent.extendedTextMessage?.text) content = msgContent.extendedTextMessage.text.trim();
+    else if (msgContent.imageMessage?.caption) content = msgContent.imageMessage.caption.trim();
+    else if (msgContent.videoMessage?.caption) content = msgContent.videoMessage.caption.trim();
 
     if (!content || !content.startsWith("https://")) return;
     if (!supportedDomains.some(domain => content.includes(domain))) return;
